@@ -36,6 +36,7 @@
 | [第15章](./15-MLOps/README.md) | MLOps | MLflow、W&B、DVC、CI/CD | ⭐⭐ | 181 |
 | [第16章](./16-边缘部署/README.md) | 边缘部署 | llama.cpp CANN、310P、ONNX Runtime | ⭐⭐ | 151 |
 | [第17章](./17-自测题汇总/README.md) | 自测题汇总 | 16 章题目 + 昇腾专项 12 题 + 答案速查 | - | 153 |
+| [第18章](./18-DeepSeek开源体系/README.md) | DeepSeek 开源体系 | V4 架构、DeepInfer 推理框架（昇腾950 原生）、FlashMLA/DeepGEMM/DeepEP、TileLang | ⭐⭐⭐ | ~170 |
 
 ## 学习路径建议
 
@@ -115,6 +116,8 @@ ai-infra-tutorial/
 - 2026-08-27：新增 11-16 章（数据工程/模型压缩/模型评测/部署进阶/MLOps/边缘部署）
 - 2026-09-12：昇腾中心化改造（01/03/04/06/08/09 章昇腾占比提升至 55-98%）
 - 2026-09-12：新增第10章「开源框架昇腾适配」，教程编号补全为 01-17
+- 2026-10-25：新增第18章「DeepSeek 开源体系」（V4 架构 + DeepInfer 推理框架 + 算子三件套 + TileLang）
+- 2026-10-25：02 章新增 §3.6 TileLang 小节；05 章新增 §5.3 SGLang 深潜；10 章矩阵补 DeepInfer/TileLang；17 章自测题同步
 
 ## License
 

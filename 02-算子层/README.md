@@ -300,6 +300,48 @@ extern "C" __global__ __aicore__ void add_custom(GM_ADDR x, GM_ADDR y, GM_ADDR z
 
 **关键认知**：FlagGems 里的算子都是 Triton 写的（跨硬件），FlagAttention 是 Ascend C 写的（昇腾专用，性能更好）。这就是"通用 vs 专用"的权衡。
 
+### 3.6 TileLang：DeepSeek 开源的 tile 级编程语言 ⭐⭐
+
+如果 Triton 是"半自动"，**TileLang**（[tile-ai/tilelang](https://github.com/tile-ai/tilelang)，DeepSeek 团队开源）就是再往上一层：**你只描述 tile 之间的数据流，编译器自动生成调度、同步和设备代码**。DeepSeek V4 系列模型训练中的大部分算子就是用 TileLang 实现的（官方口径）。
+
+**四种算子开发路径对比**：
+
+| 维度 | CUDA C++（参考） | Triton | TileLang | Ascend C |
+|------|-----------------|--------|----------|----------|
+| 抽象层次 | 线程级 | block/tile 级，手写调度 | tile 级，**编译器自动调度** | 指令级，全手动 |
+| 性能上限 | 最高 | 高（依赖手写 tiling） | 高（自动调度接近上限） | 最高 |
+| 学习成本 | 高 | 中 | 低-中 | 高 |
+| 昇腾支持 | N/A | Triton-Ascend | **tilelang 原生 Ascend 950 后端** | 原生 |
+
+**昇腾支持现状**（2026-09-30 DeepSeek 开源昇腾基础组件，含 TileLang 昇腾版）：
+
+- 上游 tilelang 已合入**原生 Ascend 950 后端**（[PR #3308](https://github.com/tile-ai/tilelang/pull/3308)）：`target="ascend"` 即可面向 950（架构代号 `dav-3510`）开发，端到端走「Ascend dialect → 硬件 lowering → 自动调度同步 → 毕昇编译器生成设备码 → NPU runtime」全链路
+- 编程模型：**显式 UB/L1/L0 存储**、Cube（矩阵）+ Vector（向量）混合编程（`T.SimdVF` / `T.SimtVF` 区域）、支持 MXFP8/MXFP4 块缩放数据类型
+- DeepSeek 官方表态：V4 训练中用到的**每一个 TileLang 算子，在昇腾上都有对应的高性能实现**；TileLang 昇腾版对 Ascend C 底层指令做了封装，"高级编程方式且不损失硬件性能"
+- 注意：原生后端目前**只覆盖 950**；A2/A3 走社区维护的实现（见仓库 Ascend README）
+
+**最小示例**：同一个 vector add，对比 §3.2 的 Triton 写法——
+
+```python
+import tilelang
+import tilelang.language as T
+
+@tilelang.jit(target="ascend")  # GPU 上是 target="cuda"
+def vector_add(N: int, blk: int = 1024):
+    @T.prim_func
+    def main(X: T.Tensor((N,), "float32"),
+             Y: T.Tensor((N,), "float32"),
+             Z: T.Tensor((N,), "float32")):
+        with T.Kernel(T.ceildiv(N, blk), threads=128) as bx:
+            for i in T.Parallel(blk):          # 描述 tile 内并行
+                Z[bx * blk + i] = X[bx * blk + i] + Y[bx * blk + i]
+    return main
+```
+
+差异一眼可见：Triton 里你要自己算 `pid * BLOCK + offsets`、手写 mask；TileLang 里 `T.Parallel` 把"tile 内并行"交给编译器，越界处理、调度、同步都自动完成。**少写调度代码 = 少出调度 bug**，代价是对极端优化的控制粒度让渡给编译器。
+
+> 第 18 章会讲到：DeepSeek 的 TileKernels 算子库和 DeepInfer 推理框架里的大量自定义 kernel 都是 TileLang 写的——学会 TileLang，就拿到了读懂 DeepSeek 推理栈源码的钥匙。
+
 ---
 
 ## 4. 方案：手写优化 Kernel 的三板斧 ⭐⭐
