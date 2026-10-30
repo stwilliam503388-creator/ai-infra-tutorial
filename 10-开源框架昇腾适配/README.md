@@ -44,6 +44,8 @@ tags: ['ai-infra', '教程', '昇腾', 'vllm', 'sglang', 'fla', 'liger', 'verl',
 | **FLA** | ✅ 官方 | backend extra | `pip install flash-linear-attention[npu]`（v0.5+）|
 | **Liger-Kernel** | ✅ 官方 | 源码安装 | README 有 Ascend NPU 安装章节 |
 | **verl** | ✅ 官方 | 文档+recipe | `docs/ascend_tutorial/zh/` + verl-ascend-recipe 仓库 |
+| **DeepInfer** | ✅ 官方 | **原生一等公民** | DeepSeek 生产推理框架，仅支持昇腾 950 + V4.1-Flash，当前仅离线推理，详见第 18 章 |
+| **TileLang** | ✅ 官方 | 原生后端 | `target="ascend"` 面向昇腾 950（dav-3510），A2/A3 走社区实现 |
 | **FlagGems** | ✅ 间接 | Triton 算子库 | 用 Triton 写，经 triton-ascend 编译 |
 | **transformers** | ✅ 间接 | 经 torch_npu | 通用模型库，tokenizer 无关硬件 |
 | **peft / trl** | ✅ 间接 | 经 torch_npu | 微调库，纯 PyTorch 逻辑 |

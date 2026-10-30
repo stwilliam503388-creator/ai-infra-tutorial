@@ -243,6 +243,67 @@ llama-server -m Qwen2.5-7B-Instruct-Q4_K_M.gguf --port 8000
 lmdeploy serve api_server Qwen/Qwen2.5-7B-Instruct --server-port 8000
 ```
 
+### 5.3 SGLang 深潜：架构、昇腾落地与版本配套 ⭐⭐
+
+§4 讲了 RadixAttention 的**原理**，这一节讲 SGLang 作为引擎的**实现层**。
+
+**5.3.1 架构两分法**
+
+SGLang = **前端 DSL + 高性能运行时**：
+
+- **前端**：radix 感知的生成程序（`sglang.function`），可以把多轮对话、工具调用、约束解码写成一个程序，运行时自动做前缀复用
+- **运行时**：调度器 + KV Cache 管理 + 约束解码引擎，负责把 RadixAttention 的收益真正兑现
+
+对比 vLLM 的"纯推理服务"定位：vLLM 给你 OpenAI 兼容 API；SGLang 在此之上多了一层**编程接口**，Agent / 结构化生成场景的收益主要来自这层。
+
+**5.3.2 与 vLLM 对比**
+
+| 维度 | vLLM | SGLang |
+|------|------|--------|
+| KV 复用 | PagedAttention（块管理） | RadixAttention（前缀树复用） |
+| PD 分离 | 支持（v1 架构） | 支持，与 Mooncake/MemFabric 配合成熟 |
+| 结构化输出 | 支持（guided decoding） | 原生强项（regex / JSON schema / EBNF） |
+| 投机解码 | EAGLE 等 | EAGLE + tree 验证，迭代更快 |
+| 最适合的负载 | 通用 API 服务 | 多轮对话 / RAG / Agent 工具链（前缀共享率高） |
+
+**5.3.3 昇腾落地：sgl-kernel-npu ⭐⭐**
+
+SGLang 是除 vLLM 外昇腾支持最完整的社区推理引擎，官方维护 [sgl-kernel-npu](https://github.com/sgl-project/sgl-kernel-npu) 算子库，包含两块：
+
+- **DeepEP-Ascend**：DeepSeek DeepEP 的昇腾实现，MoE 专家并行通信（dispatch/combine），支持 A3 全互联 HCCS 和 A2 节点内 HCCS + 跨节点 RDMA
+- **推理 kernel 全集**：MLA（Paged KV Cache）、GQA、FLA（Gated Delta Rule）、融合 RMSNorm+RoPE、投机解码 tree kernel、Mamba causal conv1d 等
+
+**算子开发双路径**（与第 2 章呼应）：
+
+1. **Ascend C**：编译进 `libsgl_kernel_npu.so`，经 `TORCH_LIBRARY_FRAGMENT` 注册，SGLang 里用 `torch.ops.npu.<op_name>()` 调用
+2. **Triton-Ascend**：Python kernel 直接 `from sgl_kernel_npu.xxx import ...` 调用，适合快速迭代
+
+**版本配套（严格，不能混搭）**：
+
+| 组件 | 版本 |
+|------|------|
+| CANN | 9.1.0（Toolkit + Kernels + NNAL） |
+| torch_npu | 2.10.0.post6 |
+| triton-ascend | 3.2.2 |
+| Python | 3.12 |
+| 硬件 | Atlas A2 / A3 / 950PR 系列 |
+
+```bash
+# 启动（昇腾）
+python -m sglang.launch_server --model-path <模型> \
+    --attention-backend ascend --host 0.0.0.0 --port 30000
+```
+
+PD 分离模式在昇腾上走 **MemFabric**（替代 Mooncake 传输引擎做 KV Cache 传输），需单独安装 `memfabric_hybrid` 和 `mf-adapter`。
+
+**5.3.4 真实坑（来自官方文档）**
+
+Gemma 系模型（含 Qwen3.5）在昇腾 950 上必须安装 **950 专用** sgl-kernel-npu 包（asset 名带 `950`）：950 走 ACLNN RMSNorm，910B/910C 走 torch_npu 原生算子，装错包会在第一个 Gemma forward 直接挂掉。验证方法：
+
+```bash
+python -c "import sgl_kernel_npu.norm.gemma_rmsnorm"
+```
+
 ---
 
 ## 6. 动手：用 vLLM 起一个 API 服务

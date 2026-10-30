@@ -20,6 +20,8 @@ tags: ['ai-infra', '教程', '自测', '测验', '昇腾']
 1. Triton 和 Ascend C 的主要区别是什么？（提示：Python DSL vs C++ 原生）
 2. FlashAttention 优化了什么？（提示：减少 HBM 访问次数）
 3. 昇腾的 UB（Unified Buffer）对应 GPU 的什么？（提示：Shared Memory）
+4. TileLang 和 Triton 的抽象层次差异是什么？（提示：手写调度 vs 编译器自动调度）
+5. TileLang 的昇腾后端怎么启用？目标芯片是什么？（提示：`target="ascend"`，950/dav-3510）
 
 ## 第3章：框架层
 
@@ -38,6 +40,8 @@ tags: ['ai-infra', '教程', '自测', '测验', '昇腾']
 1. PagedAttention 解决了什么问题？（提示：KV Cache 显存管理）
 2. vLLM-Ascend 和 vLLM 什么关系？（提示：硬件插件）
 3. MindIE 和 vLLM-Ascend 的区别是什么？（提示：华为官方 vs 社区插件）
+4. SGLang 在昇腾上的算子有哪两条开发路径？（提示：Ascend C 经 torch.ops.npu / Triton-Ascend 直接 import）
+5. SGLang 昇腾版的版本配套为什么不能混搭？（提示：CANN/torch_npu/triton-ascend 互相绑定）
 
 ## 第6章：编排层
 
@@ -105,6 +109,12 @@ tags: ['ai-infra', '教程', '自测', '测验', '昇腾']
 2. 昇腾的边缘推理硬件是什么？（提示：310P）
 3. 为什么边缘部署需要量化？（提示：内存和算力限制）
 
+## 第18章：DeepSeek 开源体系
+
+1. DeepInfer 与 vLLM-Ascend 在昇腾支持上的本质区别是什么？（提示：原生一等公民 vs 硬件插件）
+2. 为什么 MoE + MLA 架构需要 FlashMLA 和 DeepEP+EPLB 这两类专用组件？（提示：低秩 KV 结构 / 热点专家）
+3. 当前开源版 DeepInfer 缺哪三个在线服务组件？（提示：KV 缓存系统 / PD 分离 / 负载均衡）
+
 ---
 
 ## 昇腾专项自测 ⭐⭐⭐
@@ -146,6 +156,9 @@ tags: ['ai-infra', '教程', '自测', '测验', '昇腾']
 | 第14章 | Kserve=K8s 声明式，MindIE=华为官方推理引擎 | 模型加载需要时间，第一个请求超时 | MindIE |
 | 第15章 | 跟踪、项目、模型、注册 | Git 不适合管理大数据 | 随机种子、环境、数据版本不一致 |
 | 第16章 | llama.cpp=C++ 推理，PyTorch=Python 训练 | 昇腾 310P（边缘推理卡） | 内存和算力限制，量化缩小体积 |
+| 第18章 | DeepInfer=昇腾950 原生一等公民，vLLM-Ascend=vLLM 硬件插件 | MLA=低秩 KV 需专用内核；MoE 热点专家需 EP+EPLB | KV 缓存系统、PD 分离、负载均衡 |
+
+注：第2章新增题——TileLang=编译器自动调度（Triton 手写调度）、`target="ascend"` 面向昇腾950（dav-3510）；第5章新增题——Ascend C（torch.ops.npu 调用）+ Triton-Ascend（直接 import）双路径、CANN/torch_npu/triton-ascend 版本互相绑定。
 
 ---
 
